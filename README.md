@@ -1,0 +1,1 @@
+Adapted from - https://github.com/pierceboggan/xamarin-blog-samples/tree/master/ios/avfoundation-camera

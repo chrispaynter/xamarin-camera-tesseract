@@ -24,7 +24,7 @@ namespace cameraandroid
    
     //https://developer.android.com/reference/android/view/TextureView.html
     [Activity (Label = "Camera", MainLauncher = true, Icon = "@mipmap/icon", ScreenOrientation = Android.Content.PM.ScreenOrientation.Portrait)]
-    public class Camera : Activity, ISurfaceTextureListener, IPictureCallback, IShutterCallback
+    public class Camera : Activity, ISurfaceTextureListener
     {
         private Android.Hardware.Camera mCamera;
         private TextureView mTextureView;
@@ -86,21 +86,21 @@ namespace cameraandroid
             }
         }
 
-        public async Task BufferSnapshotTimer()
-        {
+        //public async Task BufferSnapshotTimer()
+        //{
             
-            while (_keepPolling)
-            {
+        //    while (_keepPolling)
+        //    {
                 
-                Handler h = new Handler();
-                Action myAction = () =>
-                {
-                    mCamera.TakePicture(this, this, this);
-                };
+        //        Handler h = new Handler();
+        //        Action myAction = () =>
+        //        {
+        //            mCamera.TakePicture(this, this, this);
+        //        };
 
-                h.PostDelayed(myAction, 1000);
-            }
-        }
+        //        h.PostDelayed(myAction, 1000);
+        //    }
+        //}
 
         public bool OnSurfaceTextureDestroyed (SurfaceTexture surface)
         {
@@ -154,19 +154,54 @@ namespace cameraandroid
             // Ignored, Camera does all the work for us
         }
 
+
+        private int surfaceTextureUpdateCount = 0;
+
         public void OnSurfaceTextureUpdated (SurfaceTexture surface)
         {
-            // Invoked every time there's a new Camera preview frame
+            if(surfaceTextureUpdateCount == 30)
+            {
+                var handler = new PictureCallbackClass(mCamera);
+                mCamera.TakePicture(handler, handler, handler);
+                //mCamera.Reconnect();
+                //mCamera.StopPreview();
+
+                //Thread t = new Thread(() =>
+                //{
+                //    // Take the photo
+                  
+                //});
+
+                //t.IsBackground = true;
+                //t.Start();
+
+                surfaceTextureUpdateCount = 0;
+            }
+            surfaceTextureUpdateCount++;
+        }
+
+
+    }
+
+    public class PictureCallbackClass : Java.Lang.Object, IPictureCallback, IShutterCallback 
+    {
+        private Android.Hardware.Camera camera;
+
+        public PictureCallbackClass(Android.Hardware.Camera camera)
+        {
+            this.camera = camera;
         }
 
         public void OnPictureTaken(byte[] data, Android.Hardware.Camera camera)
         {
+            if(data != null) 
+            {
+                camera.StartPreview();   
+            }
         }
 
         public void OnShutter()
         {
         }
-
-
     }
 }

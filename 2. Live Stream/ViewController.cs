@@ -10,42 +10,51 @@ using System.Drawing;
 
 namespace Camera
 {
-	public partial class ViewController : UIViewController
-	{
-		AVCaptureSession captureSession;
-		AVCaptureDeviceInput captureDeviceInput;
-		AVCaptureStillImageOutput stillImageOutput;
-		AVCaptureVideoPreviewLayer videoPreviewLayer;
+    public partial class ViewController : UIViewController
+    {
+        AVCaptureSession captureSession;
+        AVCaptureDeviceInput captureDeviceInput;
+        AVCaptureStillImageOutput stillImageOutput;
+        AVCaptureVideoPreviewLayer videoPreviewLayer;
         ITesseractApi tesseract;
         UIImageView targetOverlayView;
         bool _tesseractInitialised = false;
         bool _keepPolling = true;
         UILabel textOutputLabel;
 
+
         private const int TargetOverlayWidth = 100;
         private const int TargetOverlayHeight = 50;
+
+        /// <summary>
+        /// The frequency which a snapshot from the camera is taken and run through Tesseract OCR
+        /// </summary>
         private const int SnapshotMilliseconds = 200;
 
 
-		public ViewController (IntPtr handle) : base (handle)
-		{
+        public ViewController(IntPtr handle) : base(handle)
+        {
             tesseract = new TesseractApi();
-		} 
+        }
 
-		public override async void ViewDidLoad ()
-		{
-			base.ViewDidLoad ();
+        public override async void ViewDidLoad()
+        {
+            base.ViewDidLoad();
 
-			await AuthorizeCameraUse ();
-			await SetupLiveCameraStream ();
-		}
+            await AuthorizeCameraUse();
+            await SetupLiveCameraStream();
+        }
 
-		public override void DidReceiveMemoryWarning ()
-		{
-			base.DidReceiveMemoryWarning ();
-		}
+        public override void DidReceiveMemoryWarning()
+        {
+            base.DidReceiveMemoryWarning();
+        }
 
-        private void AddImageToScreenHelper(UIImage image) 
+        /// <summary>
+        /// Adds the target frame sized snapshot to the view
+        /// </summary>
+        /// <param name="image">Image.</param>
+        private void AddImageToScreenHelper(UIImage image)
         {
             var imageView = new UIImageView(image)
             {
@@ -129,9 +138,12 @@ namespace Camera
                 AddImageToScreenHelper(croppedImage);
                 var text = await ProcessOCR(croppedImage);
 
-                if(!string.IsNullOrEmpty(text)) {
-					textOutputLabel.Text = text;
-                } else {
+                if (!string.IsNullOrEmpty(text))
+                {
+                    textOutputLabel.Text = text;
+                }
+                else
+                {
                     textOutputLabel.Text = "-";
                 }
 
@@ -143,6 +155,10 @@ namespace Camera
             }
         }
 
+        /// <summary>
+        /// Takes the snapshot from the camera and grabs it's NSData
+        /// </summary>
+        /// <returns>The NSD ata of current image async.</returns>
         async Task<NSData> GetNSDataOfCurrentImageAsync()
         {
             var videoConnection = stillImageOutput.ConnectionFromMediaType(AVMediaType.Video);
@@ -157,7 +173,7 @@ namespace Camera
             return nsData;
         }
 
-      
+
 
 
         /// <summary>
@@ -167,7 +183,7 @@ namespace Camera
         /// <param name="imageData">Image data.</param>
         //https://stackoverflow.com/questions/15951746/how-to-crop-an-image-from-avcapture-to-a-rect-seen-on-the-display
         // https://forums.xamarin.com/discussion/14269/objective-c-image-crop-function
-        UIImage CropCapturedImageToTargetOverlay(NSData imageData) 
+        UIImage CropCapturedImageToTargetOverlay(NSData imageData)
         {
             // This image will rotate the NSData image 90 degrees
             // so that it is in portrait mode.
@@ -204,37 +220,33 @@ namespace Camera
             var scaledTargetWidth = targetFrame.Width * scaleRatio;
             var scaledTargetHeight = targetFrame.Height * scaleRatio;
 
-
+            // These cordinates and size are inverted, because the source
+            // image is a portrait image stored in landscape. We invert the
+            // target frame so that the cropping occurs as landscape.
             var newCropRect = new CGRect(
-				scaledTargetY,
+                scaledTargetY,
                 scaledTargetX,
                 scaledTargetHeight,
                 scaledTargetWidth
                 );
 
-            //return null;
-
             using (CGImage croppedImage = image.CGImage.WithImageInRect(newCropRect))
             {
+                // Once we crop the image, we rotate it.
                 return ScaleAndRotateImage(croppedImage, UIImageOrientation.Right);
             }
         }
 
-        byte[] ImageToByteArray(UIImage image) {
-            using (NSData imageData = image.AsPNG())
-            {
-                Byte[] myByteArray = new Byte[imageData.Length];
-                System.Runtime.InteropServices.Marshal.Copy(imageData.Bytes, myByteArray, 0, Convert.ToInt32(imageData.Length));
-                return myByteArray;
-            }
-        }
-
-
-    
-
+        /// <summary>
+        /// Takes an image, and runs it through Tesseract, returning
+        /// the cleaned string it detected.
+        /// </summary>
+        /// <returns>The ocr.</returns>
+        /// <param name="image">Image.</param>
         private async Task<string> ProcessOCR(UIImage image)
         {
-            if(!_tesseractInitialised) {
+            if (!_tesseractInitialised)
+            {
                 _tesseractInitialised = await tesseract.Init("eng");
                 tesseract.SetWhitelist("0123456789");
             }
@@ -253,34 +265,46 @@ namespace Camera
         }
 
 
+        /// <summary>
+        /// Authorise the camera's use.
+        /// </summary>
+        /// <returns>The camera use.</returns>
+        async Task AuthorizeCameraUse()
+        {
+            var authorizationStatus = AVCaptureDevice.GetAuthorizationStatus(AVMediaType.Video);
 
-		async Task AuthorizeCameraUse ()
-		{
-			var authorizationStatus = AVCaptureDevice.GetAuthorizationStatus (AVMediaType.Video);
+            if (authorizationStatus != AVAuthorizationStatus.Authorized)
+            {
+                await AVCaptureDevice.RequestAccessForMediaTypeAsync(AVMediaType.Video);
+            }
+        }
 
-			if (authorizationStatus != AVAuthorizationStatus.Authorized) {
-				await AVCaptureDevice.RequestAccessForMediaTypeAsync (AVMediaType.Video);
-			}
-		}
-
-
-		void ConfigureCameraForDevice (AVCaptureDevice device)
-		{
-			var error = new NSError ();
-			if (device.IsFocusModeSupported (AVCaptureFocusMode.ContinuousAutoFocus)) {
-				device.LockForConfiguration (out error);
-				device.FocusMode = AVCaptureFocusMode.ContinuousAutoFocus;
-				device.UnlockForConfiguration ();
-			} else if (device.IsExposureModeSupported (AVCaptureExposureMode.ContinuousAutoExposure)) {
-				device.LockForConfiguration (out error);
-				device.ExposureMode = AVCaptureExposureMode.ContinuousAutoExposure;
-				device.UnlockForConfiguration ();
-			} else if (device.IsWhiteBalanceModeSupported (AVCaptureWhiteBalanceMode.ContinuousAutoWhiteBalance)) {
-				device.LockForConfiguration (out error);
-				device.WhiteBalanceMode = AVCaptureWhiteBalanceMode.ContinuousAutoWhiteBalance;
-				device.UnlockForConfiguration ();
-			}
-		}
+        /// <summary>
+        /// Setsup the camera quality
+        /// </summary>
+        /// <param name="device">Device.</param>
+        void ConfigureCameraForDevice(AVCaptureDevice device)
+        {
+            var error = new NSError();
+            if (device.IsFocusModeSupported(AVCaptureFocusMode.ContinuousAutoFocus))
+            {
+                device.LockForConfiguration(out error);
+                device.FocusMode = AVCaptureFocusMode.ContinuousAutoFocus;
+                device.UnlockForConfiguration();
+            }
+            else if (device.IsExposureModeSupported(AVCaptureExposureMode.ContinuousAutoExposure))
+            {
+                device.LockForConfiguration(out error);
+                device.ExposureMode = AVCaptureExposureMode.ContinuousAutoExposure;
+                device.UnlockForConfiguration();
+            }
+            else if (device.IsWhiteBalanceModeSupported(AVCaptureWhiteBalanceMode.ContinuousAutoWhiteBalance))
+            {
+                device.LockForConfiguration(out error);
+                device.WhiteBalanceMode = AVCaptureWhiteBalanceMode.ContinuousAutoWhiteBalance;
+                device.UnlockForConfiguration();
+            }
+        }
 
 
         /// <summary>
@@ -403,5 +427,5 @@ namespace Camera
             return imageCopy;
         }
 
-	}
+    }
 }

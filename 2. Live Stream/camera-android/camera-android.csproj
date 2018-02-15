@@ -78,6 +78,15 @@
       <HintPath>..\packages\Neteril.ActivityTask.0.1.0\lib\monoandroid403\ActivityTask.dll</HintPath>
     </Reference>
     <Reference Include="Java.Interop" />
+    <Reference Include="Tesseract.Binding.Droid">
+      <HintPath>..\packages\Xamarin.Tesseract.0.3.4\lib\MonoAndroid10\Tesseract.Binding.Droid.dll</HintPath>
+    </Reference>
+    <Reference Include="Tesseract">
+      <HintPath>..\packages\Xamarin.Tesseract.0.3.4\lib\MonoAndroid10\Tesseract.dll</HintPath>
+    </Reference>
+    <Reference Include="Tesseract.Droid">
+      <HintPath>..\packages\Xamarin.Tesseract.0.3.4\lib\MonoAndroid10\Tesseract.Droid.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="MainActivity.cs" />

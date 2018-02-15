@@ -18,10 +18,11 @@ using System.Threading.Tasks;
 using Android.Hardware;
 using System.Threading;
 using Neteril.Android;
+using Tesseract;
+using Tesseract.Droid;
 
 namespace cameraandroid
 {
-   
     //https://developer.android.com/reference/android/view/TextureView.html
     [Activity (Label = "Camera", MainLauncher = true, Icon = "@mipmap/icon", ScreenOrientation = Android.Content.PM.ScreenOrientation.Portrait)]
     public class Camera : Activity, ISurfaceTextureListener
@@ -30,6 +31,7 @@ namespace cameraandroid
         private TextureView mTextureView;
         private CameraInfo mCameraInfo;
         bool _keepPolling = true;
+        PictureCallbackClass callbackHandler;
 
         /// <summary>
         /// The frequency which a snapshot from the camera is taken and run through Tesseract OCR
@@ -39,6 +41,7 @@ namespace cameraandroid
         protected async override void OnCreate (Bundle savedInstanceState)
         {
             base.OnCreate (savedInstanceState);
+
 
             mTextureView = new TextureView (this) 
             {
@@ -75,6 +78,10 @@ namespace cameraandroid
 
             //https://www.captechconsulting.com/blogs/android-camera-orientation-made-simple
             mCamera.SetDisplayOrientation (getCorrectCameraOrientation (mCameraInfo, mCamera));
+
+            // singleton callback handler
+            callbackHandler = new PictureCallbackClass(mCamera);
+
 
             try {
                 mCamera.SetPreviewTexture (surface);
@@ -161,20 +168,11 @@ namespace cameraandroid
         {
             if(surfaceTextureUpdateCount == 30)
             {
-                var handler = new PictureCallbackClass(mCamera);
-                mCamera.TakePicture(handler, handler, handler);
+                mCamera.TakePicture(callbackHandler, callbackHandler, callbackHandler);
                 //mCamera.Reconnect();
                 //mCamera.StopPreview();
 
-                //Thread t = new Thread(() =>
-                //{
-                //    // Take the photo
-                  
-                //});
-
-                //t.IsBackground = true;
-                //t.Start();
-
+            
                 surfaceTextureUpdateCount = 0;
             }
             surfaceTextureUpdateCount++;
@@ -185,17 +183,45 @@ namespace cameraandroid
 
     public class PictureCallbackClass : Java.Lang.Object, IPictureCallback, IShutterCallback 
     {
-        private Android.Hardware.Camera camera;
+        Android.Hardware.Camera camera;
+        ITesseractApi tesseract;
+        bool _tesseractInitialised = false;
+
 
         public PictureCallbackClass(Android.Hardware.Camera camera)
         {
             this.camera = camera;
+            tesseract = new TesseractApi(Application.Context, AssetsDeployment.OncePerVersion);
         }
 
         public void OnPictureTaken(byte[] data, Android.Hardware.Camera camera)
         {
             if(data != null) 
             {
+                Thread t = new Thread(async () =>
+                {
+                    // Take the photo
+                    if(!_tesseractInitialised) {
+                        _tesseractInitialised = await tesseract.Init("eng");
+                    }
+
+                    bool success = await tesseract.SetImage(data);
+
+                    if (success)
+                    {
+                        string textResult = tesseract.Text;
+                        textResult.Trim();
+                        textResult.Replace(" ", "");
+
+                        // Dispatch some kind of event
+                        //return textResult;
+                    }
+
+                });
+
+                t.IsBackground = true;
+                t.Start();
+
                 camera.StartPreview();   
             }
         }

@@ -169,10 +169,6 @@ namespace cameraandroid
             if(surfaceTextureUpdateCount == 30)
             {
                 mCamera.TakePicture(callbackHandler, callbackHandler, callbackHandler);
-                //mCamera.Reconnect();
-                //mCamera.StopPreview();
-
-            
                 surfaceTextureUpdateCount = 0;
             }
             surfaceTextureUpdateCount++;

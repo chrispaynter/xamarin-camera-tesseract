@@ -12,21 +12,23 @@ using UIKit;
 
 namespace Camera
 {
-    public class OCRCameraView : UIView
+    public class OCRCameraView : UIView, IDisposable
     {
         AVCaptureSession captureSession;
         AVCaptureDeviceInput captureDeviceInput;
         AVCaptureVideoPreviewLayer videoPreviewLayer;
         ITesseractApi tesseract;
         UIImageView targetOverlayView;
+
+        public OutputRecorder Recorder { get; set; }
+        public DispatchQueue Queue { get; set; }
+
+
         bool _tesseractInitialised = false;
         bool _keepPolling = true;
         UILabel textOutputLabel;
-        UIView LiveCameraStream { get; set; }
 
-        public AVCaptureSession VideoCaptureSession { get; set; }
-        public OutputRecorder Recorder { get; set; }
-        public DispatchQueue Queue { get; set; }
+
 
         public delegate Task OnOCRTextReceivedAsyncEvent(string text);
         public event OnOCRTextReceivedAsyncEvent OnOCRTextReceivedAsync;
@@ -41,13 +43,7 @@ namespace Camera
 
         public OCRCameraView()
         {
-            //LiveCameraStream = new UIView()
-            //{
-            //    Frame = frame
-            //};
-
             tesseract = new TesseractApi();
-            //this.LiveCameraStream = liveCameraStream;
         }
 
         public override async void WillMoveToWindow(UIWindow window)
@@ -79,7 +75,6 @@ namespace Camera
 
 
             // SETUP THE PREVIEW OF THE CAPTURE SESSION
-            //var viewLayer = LiveCameraStream.Layer;
             videoPreviewLayer = new AVCaptureVideoPreviewLayer(captureSession)
             {
                 Frame = this.Frame
@@ -430,6 +425,21 @@ namespace Camera
             UIGraphics.EndImageContext();
 
             return imageCopy;
+        }
+
+        public void Stop()
+        {
+            captureSession.StopRunning();
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+			videoPreviewLayer.Dispose();
+            captureDeviceInput.Dispose();
+            tesseract.Dispose();
+			targetOverlayView.Dispose();
+            captureSession.Dispose();
+            base.Dispose(disposing);
         }
 
     }

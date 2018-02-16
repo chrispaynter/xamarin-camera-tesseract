@@ -39,10 +39,15 @@ namespace Camera
         public bool DebugMode = false;
 
 
-        public OCRCameraView(UIView liveCameraStream)
+        public OCRCameraView()
         {
+            //LiveCameraStream = new UIView()
+            //{
+            //    Frame = frame
+            //};
+
             tesseract = new TesseractApi();
-            this.LiveCameraStream = liveCameraStream;
+            //this.LiveCameraStream = liveCameraStream;
         }
 
         public override async void WillMoveToWindow(UIWindow window)
@@ -74,13 +79,13 @@ namespace Camera
 
 
             // SETUP THE PREVIEW OF THE CAPTURE SESSION
-            var viewLayer = LiveCameraStream.Layer;
+            //var viewLayer = LiveCameraStream.Layer;
             videoPreviewLayer = new AVCaptureVideoPreviewLayer(captureSession)
             {
                 Frame = this.Frame
             };
 
-            LiveCameraStream.Layer.AddSublayer(videoPreviewLayer);
+            this.Layer.AddSublayer(videoPreviewLayer);
 
 
             // SETUP THE INPUT DEVICE FOR THE SESSION

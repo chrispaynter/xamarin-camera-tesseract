@@ -3,7 +3,7 @@ using CoreFoundation;
 using CoreMedia;
 
 namespace Camera {     public partial class ViewController : UIViewController     {         public ViewController(IntPtr handle) : base(handle)         {         }          public override void ViewDidLoad()
-        {             // Initialise the OCRCameraView to fit in the parent View frame             OCRCameraView cameraView = new OCRCameraView(liveCameraStream)
+        {             // Initialise the OCRCameraView to fit in the parent View frame             OCRCameraView cameraView = new OCRCameraView()
             {
                 Frame = new CGRect(                     this.View.Frame.X,                     this.View.Frame.Y,                     this.View.Frame.Width,                     this.View.Frame.Height                 )
             };              // Basic configuration examples             //cameraView.TargetOverlayWidth = 200;             //cameraView.TargetOverlayHeight = 100;             //cameraView.VideoFrameInterval = 20;             cameraView.OCRWhiteList = "0123456789";             cameraView.DebugMode = true; // Set this to false for production              cameraView.OnOCRTextReceivedAsync += async (string text) =>             {                 await Task.Delay(1000); // This is just to make the method async                 Console.WriteLine("Async version of OCR Text Recieved: " + text);             };              cameraView.OnOCRTextReceived += (string text) =>

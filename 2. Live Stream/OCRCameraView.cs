@@ -456,6 +456,12 @@ namespace Camera
         protected override void Dispose(bool disposing)
         {
             if(disposing) {
+                
+                if (captureSession.Running)
+                {
+                    captureSession.StopRunning();
+                }
+
                 isDisposing = true;
                 videoPreviewLayer.Dispose();
                 captureDeviceInput.Dispose();

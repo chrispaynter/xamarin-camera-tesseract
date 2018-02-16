@@ -23,12 +23,9 @@ namespace Camera
         public OutputRecorder Recorder { get; set; }
         public DispatchQueue Queue { get; set; }
 
-
         bool _tesseractInitialised = false;
         bool _keepPolling = true;
         UILabel textOutputLabel;
-
-
 
         public delegate Task OnOCRTextReceivedAsyncEvent(string text);
         public event OnOCRTextReceivedAsyncEvent OnOCRTextReceivedAsync;

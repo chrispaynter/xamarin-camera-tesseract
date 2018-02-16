@@ -35,6 +35,7 @@ namespace Camera
         public int TargetOverlayWidth = 100;
         public int TargetOverlayHeight = 50;
         public int VideoFrameInterval = 20;
+        public string OCRWhiteList = null;
         public bool DebugMode = false;
 
 
@@ -243,7 +244,7 @@ namespace Camera
             if (!_tesseractInitialised)
             {
                 _tesseractInitialised = await tesseract.Init("eng");
-                tesseract.SetWhitelist("0123456789");
+                tesseract.SetWhitelist(OCRWhiteList);
             }
 
             bool success = await tesseract.SetImage(image.AsPNG().AsStream());

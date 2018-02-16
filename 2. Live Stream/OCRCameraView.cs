@@ -249,7 +249,11 @@ namespace Camera
             if (!_tesseractInitialised)
             {
                 _tesseractInitialised = await tesseract.Init("eng");
-                tesseract.SetWhitelist(OCRWhiteList);
+
+                if(!string.IsNullOrEmpty(OCRWhiteList))
+                {
+					tesseract.SetWhitelist(OCRWhiteList);
+                }
             }
 
             bool success = await tesseract.SetImage(image.AsPNG().AsStream());

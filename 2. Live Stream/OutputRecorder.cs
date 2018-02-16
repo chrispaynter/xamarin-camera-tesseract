@@ -83,7 +83,9 @@ namespace Camera
                     {
                         View.BeginInvokeOnMainThread(async () => {
 
-                            await OnFrameRecieved(image);
+                            if(OnFrameRecieved != null) {
+                                await OnFrameRecieved(image);
+                            }
 
 
                             //// Set the image

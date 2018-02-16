@@ -133,22 +133,28 @@ namespace Camera
                         await OnOCRTextReceivedAsync(text);
                     }
 
-                    OnOCRTextReceived?.Invoke(text);
+                    if(!isDisposing)
+                    {
+						OnOCRTextReceived?.Invoke(text);
+                    }
                 }
 
                 if (DebugMode)
                 {
-                    // This will display the cropped image
-                    // and found OCR text to the screen
-                    AddImageToScreenHelper(croppedImage);
+                    if(!isDisposing)
+                    {
+                        // This will display the cropped image
+                        // and found OCR text to the screen
+                        AddImageToScreenHelper(croppedImage);
 
-                    if (!string.IsNullOrEmpty(text))
-                    {
-                        textOutputLabel.Text = text;
-                    }
-                    else
-                    {
-                        textOutputLabel.Text = "-";
+                        if (!string.IsNullOrEmpty(text))
+                        {
+                            textOutputLabel.Text = text;
+                        }
+                        else
+                        {
+                            textOutputLabel.Text = "-";
+                        }
                     }
                 }
             }
@@ -258,13 +264,16 @@ namespace Camera
 
             bool success = await tesseract.SetImage(image.AsPNG().AsStream());
 
-            if (success)
+            if(!isDisposing)
             {
-                string textResult = tesseract.Text;
-                textResult.Trim();
-                textResult.Replace(" ", "");
-                return textResult;
-            }
+                if (success)
+                {
+                    string textResult = tesseract.Text;
+                    textResult.Trim();
+                    textResult.Replace(" ", "");
+                    return textResult;
+                }
+			}
 
             return null;
         }
@@ -446,12 +455,14 @@ namespace Camera
 
         protected override void Dispose(bool disposing)
         {
-            isDisposing = true;
-			videoPreviewLayer.Dispose();
-            captureDeviceInput.Dispose();
-            tesseract.Dispose();
-			targetOverlayView.Dispose();
-            captureSession.Dispose();
+            if(disposing) {
+                isDisposing = true;
+                videoPreviewLayer.Dispose();
+                captureDeviceInput.Dispose();
+                tesseract.Dispose();
+                targetOverlayView.Dispose();
+                captureSession.Dispose();
+			}
             base.Dispose(disposing);
         }
 

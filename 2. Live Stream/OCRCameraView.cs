@@ -432,10 +432,17 @@ namespace Camera
             return imageCopy;
         }
 
+        public void Start()
+        {
+            captureSession.StartRunning();
+        }
+
         public void Stop()
         {
             captureSession.StopRunning();
         }
+
+
 
         protected override void Dispose(bool disposing)
         {

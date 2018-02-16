@@ -8,6 +8,10 @@ using UIKit;
 
 namespace Camera
 {
+
+    /// <summary>
+    /// https://developer.xamarin.com/guides/ios/user_interface/controls/intro_to_manual_camera_controls/
+    /// </summary>
     public class OutputRecorder : AVCaptureVideoDataOutputSampleBufferDelegate
     {
         public delegate Task OnFrameRecievedEvent(UIImage image);

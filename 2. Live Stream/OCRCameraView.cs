@@ -37,6 +37,7 @@ namespace Camera
         public string OCRWhiteList = null;
         public bool DebugMode = false;
 
+        public bool isDisposing = false;
 
         public OCRCameraView()
         {
@@ -116,32 +117,39 @@ namespace Camera
 
         private async Task HandleVideFrameImage(UIImage image)
         {
-            var croppedImage = CropCapturedImageToTargetOverlay(image);
-            var text = await ProcessOCR(croppedImage);
-
-            if (!string.IsNullOrEmpty(text))
+            // If thi OCRCameraView is disposing, there is a chance that
+            // the HandleVideoFRameImage handler may still get called.
+            // this isDisposing check makes sure no action is taken
+            // if it does get called after disposing.
+            if(!isDisposing)
             {
-                if (OnOCRTextReceivedAsync != null)
-                {
-                    await OnOCRTextReceivedAsync(text);
-                }
-
-                OnOCRTextReceived?.Invoke(text);
-            }
-
-            if (DebugMode)
-            {
-                // This will display the cropped image
-                // and found OCR text to the screen
-                AddImageToScreenHelper(croppedImage);
+                var croppedImage = CropCapturedImageToTargetOverlay(image);
+                var text = await ProcessOCR(croppedImage);
 
                 if (!string.IsNullOrEmpty(text))
                 {
-                    textOutputLabel.Text = text;
+                    if (OnOCRTextReceivedAsync != null)
+                    {
+                        await OnOCRTextReceivedAsync(text);
+                    }
+
+                    OnOCRTextReceived?.Invoke(text);
                 }
-                else
+
+                if (DebugMode)
                 {
-                    textOutputLabel.Text = "-";
+                    // This will display the cropped image
+                    // and found OCR text to the screen
+                    AddImageToScreenHelper(croppedImage);
+
+                    if (!string.IsNullOrEmpty(text))
+                    {
+                        textOutputLabel.Text = text;
+                    }
+                    else
+                    {
+                        textOutputLabel.Text = "-";
+                    }
                 }
             }
         }
@@ -431,6 +439,7 @@ namespace Camera
 
         protected override void Dispose(bool disposing)
         {
+            isDisposing = true;
 			videoPreviewLayer.Dispose();
             captureDeviceInput.Dispose();
             tesseract.Dispose();

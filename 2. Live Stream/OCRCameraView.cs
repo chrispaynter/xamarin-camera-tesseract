@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Drawing;
+using System.Linq;
 using System.Threading.Tasks;
 using AVFoundation;
 using CoreFoundation;
@@ -27,9 +28,9 @@ namespace Camera
         bool _keepPolling = true;
         UILabel textOutputLabel;
 
-        public delegate Task OnOCRTextReceivedAsyncEvent(string text);
+        public delegate Task OnOCRTextReceivedAsyncEvent(string[] results);
         public event OnOCRTextReceivedAsyncEvent OnOCRTextReceivedAsync;
-        public delegate void OnOCRTextReceivedEvent(string text);
+        public delegate void OnOCRTextReceivedEvent(string[] results);
         public event OnOCRTextReceivedEvent OnOCRTextReceived;
         public int TargetOverlayWidth = 100;
         public int TargetOverlayHeight = 50;
@@ -124,18 +125,18 @@ namespace Camera
             if(!isDisposing)
             {
                 var croppedImage = CropCapturedImageToTargetOverlay(image);
-                var text = await ProcessOCR(croppedImage);
+                var results = await ProcessOCR(croppedImage);
 
-                if (!string.IsNullOrEmpty(text))
+                if (results != null && results.Length > 0)
                 {
                     if (OnOCRTextReceivedAsync != null)
                     {
-                        await OnOCRTextReceivedAsync(text);
+                        await OnOCRTextReceivedAsync(results);
                     }
 
                     if(!isDisposing)
                     {
-						OnOCRTextReceived?.Invoke(text);
+                        OnOCRTextReceived?.Invoke(results);
                     }
                 }
 
@@ -147,9 +148,9 @@ namespace Camera
                         // and found OCR text to the screen
                         AddImageToScreenHelper(croppedImage);
 
-                        if (!string.IsNullOrEmpty(text))
+                        if (results != null && results.Length > 0)
                         {
-                            textOutputLabel.Text = text;
+                            textOutputLabel.Text = string.Join(",", results);
                         }
                         else
                         {
@@ -250,11 +251,13 @@ namespace Camera
         /// </summary>
         /// <returns>The ocr.</returns>
         /// <param name="image">Image.</param>
-        private async Task<string> ProcessOCR(UIImage image)
+        private async Task<string[]> ProcessOCR(UIImage image)
         {
             if (!_tesseractInitialised)
             {
+                //tesseract.SetPageSegmentationMode(PageSegmentationMode.SingleWord);
                 _tesseractInitialised = await tesseract.Init("eng");
+				tesseract.SetVariable("tosp_min_sane_kn_sp", "10");
 
                 if(!string.IsNullOrEmpty(OCRWhiteList))
                 {
@@ -268,10 +271,8 @@ namespace Camera
             {
                 if (success)
                 {
-                    string textResult = tesseract.Text;
-                    textResult.Trim();
-                    textResult.Replace(" ", "");
-                    return textResult;
+                    var results = tesseract.Results(PageIteratorLevel.Word);
+                    return results?.Select(u => u.Text).ToArray();
                 }
 			}
 

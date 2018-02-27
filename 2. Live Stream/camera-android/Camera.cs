@@ -1,5 +1,4 @@
-﻿
-using System;
+﻿using System;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
@@ -25,7 +24,7 @@ namespace cameraandroid
 {
     //https://developer.android.com/reference/android/view/TextureView.html
     [Activity (Label = "Camera", MainLauncher = true, Icon = "@mipmap/icon", ScreenOrientation = Android.Content.PM.ScreenOrientation.Portrait)]
-    public class Camera : Activity, ISurfaceTextureListener
+    public class Camera : Activity, ISurfaceTextureListener, IPreviewCallback
     {
         private Android.Hardware.Camera mCamera;
         private TextureView mTextureView;
@@ -87,27 +86,12 @@ namespace cameraandroid
                 mCamera.SetPreviewTexture (surface);
                 mCamera.StartPreview ();
 
+                mCamera.SetPreviewCallback(this);
 
             } catch (IOException ioe) {
                 // Something bad happened
             }
         }
-
-        //public async Task BufferSnapshotTimer()
-        //{
-            
-        //    while (_keepPolling)
-        //    {
-                
-        //        Handler h = new Handler();
-        //        Action myAction = () =>
-        //        {
-        //            mCamera.TakePicture(this, this, this);
-        //        };
-
-        //        h.PostDelayed(myAction, 1000);
-        //    }
-        //}
 
         public bool OnSurfaceTextureDestroyed (SurfaceTexture surface)
         {
@@ -168,13 +152,30 @@ namespace cameraandroid
         {
             if(surfaceTextureUpdateCount == 30)
             {
-                mCamera.TakePicture(callbackHandler, callbackHandler, callbackHandler);
+                //mCamera.TakePicture(callbackHandler, callbackHandler, callbackHandler);
                 surfaceTextureUpdateCount = 0;
             }
             surfaceTextureUpdateCount++;
         }
 
+        /// <summary>
+        /// https://stackoverflow.com/questions/20298699/onpreviewframe-data-image-to-imageview
+        /// </summary>
+        /// <param name="data">Data.</param>
+        /// <param name="camera">Camera.</param>
+        public void OnPreviewFrame(byte[] data, Android.Hardware.Camera camera)
+        {
+            var parameters = camera.GetParameters();
+            int width = parameters.PreviewSize.Width;
+            int height = parameters.PreviewSize.Height;
 
+            YuvImage yuv = new YuvImage(data, parameters.PreviewFormat, width, height, null);
+
+            var byteArrayOutputStream = new MemoryStream();
+            yuv.CompressToJpeg(new Rect(0, 0, width, height), 50, byteArrayOutputStream);
+            byte[] bytes = byteArrayOutputStream.ToArray();
+            var bitmap = BitmapFactory.DecodeByteArray(bytes, 0, bytes.Length);
+        }
     }
 
     public class PictureCallbackClass : Java.Lang.Object, IPictureCallback, IShutterCallback 

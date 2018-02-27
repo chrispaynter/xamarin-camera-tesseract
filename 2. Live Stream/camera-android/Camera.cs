@@ -1,24 +1,13 @@
-﻿using System;
-using System.IO;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
+﻿using System.IO;
 using Android.App;
 using Android.Content;
 using Android.Graphics;
 using Android.OS;
 using Android.Runtime;
 using Android.Views;
-using Android.Widget;
 using static Android.Views.TextureView;
 using static Android.Hardware.Camera;
-using System.Threading.Tasks;
 using Android.Hardware;
-using System.Threading;
-using Neteril.Android;
-using Tesseract;
-using Tesseract.Droid;
 
 namespace cameraandroid
 {
@@ -29,18 +18,15 @@ namespace cameraandroid
         private Android.Hardware.Camera mCamera;
         private TextureView mTextureView;
         private CameraInfo mCameraInfo;
-        bool _keepPolling = true;
-        PictureCallbackClass callbackHandler;
 
         /// <summary>
         /// The frequency which a snapshot from the camera is taken and run through Tesseract OCR
         /// </summary>
         private const int SnapshotMilliseconds = 200;
 
-        protected async override void OnCreate (Bundle savedInstanceState)
+        protected override void OnCreate(Bundle savedInstanceState)
         {
-            base.OnCreate (savedInstanceState);
-
+            base.OnCreate(savedInstanceState);
 
             mTextureView = new TextureView (this) 
             {
@@ -48,9 +34,6 @@ namespace cameraandroid
             };
 
             SetContentView (mTextureView);
-
-            //using (var scope = ActivityScope.Of(this))
-                    //await BufferSnapshotTimer();
         }
 
         public CameraInfo GetCameraInfo()
@@ -60,7 +43,7 @@ namespace cameraandroid
                 var cameraInfo = new CameraInfo ();
                 Android.Hardware.Camera.GetCameraInfo (i, cameraInfo);
 
-                if(cameraInfo.Facing == Android.Hardware.CameraFacing.Back)
+                if(cameraInfo.Facing == CameraFacing.Back)
                 {
                     return cameraInfo;
                 }
@@ -77,10 +60,6 @@ namespace cameraandroid
 
             //https://www.captechconsulting.com/blogs/android-camera-orientation-made-simple
             mCamera.SetDisplayOrientation (getCorrectCameraOrientation (mCameraInfo, mCamera));
-
-            // singleton callback handler
-            callbackHandler = new PictureCallbackClass(mCamera);
-
 
             try {
                 mCamera.SetPreviewTexture (surface);
@@ -152,7 +131,6 @@ namespace cameraandroid
         {
             if(surfaceTextureUpdateCount == 30)
             {
-                //mCamera.TakePicture(callbackHandler, callbackHandler, callbackHandler);
                 surfaceTextureUpdateCount = 0;
             }
             surfaceTextureUpdateCount++;
@@ -178,53 +156,53 @@ namespace cameraandroid
         }
     }
 
-    public class PictureCallbackClass : Java.Lang.Object, IPictureCallback, IShutterCallback 
-    {
-        Android.Hardware.Camera camera;
-        ITesseractApi tesseract;
-        bool _tesseractInitialised = false;
+    //public class PictureCallbackClass : Java.Lang.Object, IPictureCallback, IShutterCallback 
+    //{
+    //    Android.Hardware.Camera camera;
+    //    ITesseractApi tesseract;
+    //    bool _tesseractInitialised = false;
 
 
-        public PictureCallbackClass(Android.Hardware.Camera camera)
-        {
-            this.camera = camera;
-            tesseract = new TesseractApi(Application.Context, AssetsDeployment.OncePerVersion);
-        }
+    //    public PictureCallbackClass(Android.Hardware.Camera camera)
+    //    {
+    //        this.camera = camera;
+    //        tesseract = new TesseractApi(Application.Context, AssetsDeployment.OncePerVersion);
+    //    }
 
-        public void OnPictureTaken(byte[] data, Android.Hardware.Camera camera)
-        {
-            if(data != null) 
-            {
-                Thread t = new Thread(async () =>
-                {
-                    // Take the photo
-                    if(!_tesseractInitialised) {
-                        _tesseractInitialised = await tesseract.Init("eng");
-                    }
+    //    public void OnPictureTaken(byte[] data, Android.Hardware.Camera camera)
+    //    {
+    //        if(data != null) 
+    //        {
+    //            Thread t = new Thread(async () =>
+    //            {
+    //                // Take the photo
+    //                if(!_tesseractInitialised) {
+    //                    _tesseractInitialised = await tesseract.Init("eng");
+    //                }
 
-                    bool success = await tesseract.SetImage(data);
+    //                bool success = await tesseract.SetImage(data);
 
-                    if (success)
-                    {
-                        string textResult = tesseract.Text;
-                        textResult.Trim();
-                        textResult.Replace(" ", "");
+    //                if (success)
+    //                {
+    //                    string textResult = tesseract.Text;
+    //                    textResult.Trim();
+    //                    textResult.Replace(" ", "");
 
-                        // Dispatch some kind of event
-                        //return textResult;
-                    }
+    //                    // Dispatch some kind of event
+    //                    //return textResult;
+    //                }
 
-                });
+    //            });
 
-                t.IsBackground = true;
-                t.Start();
+    //            t.IsBackground = true;
+    //            t.Start();
 
-                camera.StartPreview();   
-            }
-        }
+    //            camera.StartPreview();   
+    //        }
+    //    }
 
-        public void OnShutter()
-        {
-        }
-    }
+    //    public void OnShutter()
+    //    {
+    //    }
+    //}
 }

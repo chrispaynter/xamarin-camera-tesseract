@@ -14,6 +14,7 @@ using System;
 using System.Threading.Tasks;
 using Tesseract.Droid;
 using Android.Util;
+using Android.Widget;
 
 namespace cameraandroid
 {
@@ -26,6 +27,7 @@ namespace cameraandroid
         private CameraInfo mCameraInfo;
         bool _tesseractInitialised = false;
         ITesseractApi tesseract;
+        ImageView imageView;
 
         /// <summary>
         /// The frequency which a snapshot from the camera is taken and run through Tesseract OCR
@@ -41,9 +43,13 @@ namespace cameraandroid
             mTextureView = new TextureView (this) 
             {
                 SurfaceTextureListener = this
+
             };
 
+            imageView = new ImageView(Application.Context);
+
             SetContentView (mTextureView);
+            this.AddContentView(imageView, new LinearLayout.LayoutParams(100, 100));
         }
 
         public CameraInfo GetCameraInfo()
@@ -72,12 +78,53 @@ namespace cameraandroid
             mCamera.SetDisplayOrientation (getCorrectCameraOrientation (mCameraInfo, mCamera));
 
             try {
+
+                cameraParams.SetPreviewSize();
+
                 mCamera.SetPreviewTexture (surface);
 				mCamera.SetPreviewCallback(this);
                 mCamera.StartPreview ();
             } catch (IOException ioe) {
                 // Something bad happened
             }
+        }
+
+        private void ConfigurePreviewSize()
+        {
+            var cameraParams = mCamera.GetParameters();
+            var supportedPreviewSizes = cameraParams.SupportedPreviewSizes;
+            int minDiff = int.MaxValue;
+            Android.Hardware.Camera.Size bestSize = null;
+
+            if(Application.Context.Resources.Configuration.Orientation == Android.Content.Res.Orientation.Landscape)
+            {
+                foreach (Android.Hardware.Camera.Size size in supportedPreviewSizes)
+                {
+                    var diff = Math.Abs(size.Width - mTextureView.Width);
+
+                    if (diff < minDiff)
+                    {
+                        minDiff = diff;
+                        bestSize = size;
+                    }
+                }
+            }
+            else
+            {
+                foreach (Android.Hardware.Camera.Size size in supportedPreviewSizes)
+                {
+                    var diff = Math.Abs(size.Height - mTextureView.Width);
+
+                    if (diff < minDiff)
+                    {
+                        minDiff = diff;
+                        bestSize = size;
+                    }
+                }
+            }
+
+            cameraParams.SetPreviewSize(bestSize.Width, bestSize.Height);
+            mCamera.SetParameters(cameraParams);
         }
 
         public bool OnSurfaceTextureDestroyed (SurfaceTexture surface)
@@ -155,6 +202,8 @@ namespace cameraandroid
                 Console.WriteLine("---------------------------------");
                 Console.WriteLine("Time to frame it up");
 
+
+
                 if(!ocrRunning)
                 {
                     Console.WriteLine("Can do the task");
@@ -170,6 +219,10 @@ namespace cameraandroid
                             Console.WriteLine("TBase64.EncodeToString(bytes, Base64.Default)ask is done");
                         //var base64 = Base64.EncodeToString(bytes, Base64Flags.Default);
                             //Console.WriteLine(base64);
+
+                        RunOnUiThread(() => {
+                            imageView.SetImageBitmap(bitmap);
+                        });
 
                             ocrRunning = false;
                         });

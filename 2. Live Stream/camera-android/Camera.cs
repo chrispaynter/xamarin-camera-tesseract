@@ -8,6 +8,12 @@ using Android.Views;
 using static Android.Views.TextureView;
 using static Android.Hardware.Camera;
 using Android.Hardware;
+using System.Threading;
+using Tesseract;
+using System;
+using System.Threading.Tasks;
+using Tesseract.Droid;
+using Android.Util;
 
 namespace cameraandroid
 {
@@ -18,6 +24,8 @@ namespace cameraandroid
         private Android.Hardware.Camera mCamera;
         private TextureView mTextureView;
         private CameraInfo mCameraInfo;
+        bool _tesseractInitialised = false;
+        ITesseractApi tesseract;
 
         /// <summary>
         /// The frequency which a snapshot from the camera is taken and run through Tesseract OCR
@@ -27,6 +35,8 @@ namespace cameraandroid
         protected override void OnCreate(Bundle savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
+
+            tesseract = new TesseractApi(Application.Context, AssetsDeployment.OncePerVersion);
 
             mTextureView = new TextureView (this) 
             {
@@ -38,7 +48,7 @@ namespace cameraandroid
 
         public CameraInfo GetCameraInfo()
         {
-            int noOfCameras = Android.Hardware.Camera.NumberOfCameras;
+            int noOfCameras = NumberOfCameras;
             for (int i = 0; i < noOfCameras; i++) {
                 var cameraInfo = new CameraInfo ();
                 Android.Hardware.Camera.GetCameraInfo (i, cameraInfo);
@@ -54,7 +64,7 @@ namespace cameraandroid
 
         public void OnSurfaceTextureAvailable (SurfaceTexture surface, int width, int height)
         {
-            mCamera = Android.Hardware.Camera.Open ();
+            mCamera = Open();
             mCameraInfo = GetCameraInfo ();
 
 
@@ -63,10 +73,8 @@ namespace cameraandroid
 
             try {
                 mCamera.SetPreviewTexture (surface);
+				mCamera.SetPreviewCallback(this);
                 mCamera.StartPreview ();
-
-                mCamera.SetPreviewCallback(this);
-
             } catch (IOException ioe) {
                 // Something bad happened
             }
@@ -106,7 +114,7 @@ namespace cameraandroid
 
             int result;
 
-            if (info.Facing == Android.Hardware.CameraFacing.Front) 
+            if (info.Facing == CameraFacing.Front) 
             {
                 result = (info.Orientation + degrees) % 360;
                 result = (360 - 2) % 360;
@@ -125,15 +133,10 @@ namespace cameraandroid
         }
 
 
-        private int surfaceTextureUpdateCount = 0;
 
         public void OnSurfaceTextureUpdated (SurfaceTexture surface)
         {
-            if(surfaceTextureUpdateCount == 30)
-            {
-                surfaceTextureUpdateCount = 0;
-            }
-            surfaceTextureUpdateCount++;
+            // Ignored, Camera does all the work for us
         }
 
         /// <summary>
@@ -141,7 +144,47 @@ namespace cameraandroid
         /// </summary>
         /// <param name="data">Data.</param>
         /// <param name="camera">Camera.</param>
+        private int surfaceTextureUpdateCount = 0;
+
+        private bool ocrRunning = false;
+
         public void OnPreviewFrame(byte[] data, Android.Hardware.Camera camera)
+        {
+            if (surfaceTextureUpdateCount == 30)
+            {
+                Console.WriteLine("---------------------------------");
+                Console.WriteLine("Time to frame it up");
+
+                if(!ocrRunning)
+                {
+                    Console.WriteLine("Can do the task");
+
+                    ocrRunning = true;
+
+                    var task3 = new Task(async() =>
+                        {
+                            var bytes = ConvertYugByetArrayJpegByteArray(data, camera);
+                            var bitmap = BitmapFactory.DecodeByteArray(bytes, 0, bytes.Length);
+                            var text = await DoOCR(bytes);
+                            //Console.WriteLine(text);
+                            Console.WriteLine("TBase64.EncodeToString(bytes, Base64.Default)ask is done");
+                        //var base64 = Base64.EncodeToString(bytes, Base64Flags.Default);
+                            //Console.WriteLine(base64);
+
+                            ocrRunning = false;
+                        });
+                    task3.Start();
+                } else {
+                    Console.WriteLine("OCR already running");
+                }
+
+                surfaceTextureUpdateCount = 0;
+            }
+
+            surfaceTextureUpdateCount++;
+        }
+
+        private byte[] ConvertYugByetArrayJpegByteArray(byte[] data, Android.Hardware.Camera camera)
         {
             var parameters = camera.GetParameters();
             int width = parameters.PreviewSize.Width;
@@ -151,58 +194,57 @@ namespace cameraandroid
 
             var byteArrayOutputStream = new MemoryStream();
             yuv.CompressToJpeg(new Rect(0, 0, width, height), 50, byteArrayOutputStream);
-            byte[] bytes = byteArrayOutputStream.ToArray();
-            var bitmap = BitmapFactory.DecodeByteArray(bytes, 0, bytes.Length);
+            return byteArrayOutputStream.ToArray();
+        }
+
+        public async Task<string> DoOCR(byte[] bytes)
+        {
+            // Take the photo
+            if(!_tesseractInitialised) {
+                _tesseractInitialised = await tesseract.Init("eng");
+            }
+
+            bool success = await tesseract.SetImage(bytes);
+
+            if (success)
+            {
+                string textResult = tesseract.Text;
+                textResult.Trim();
+                textResult.Replace(" ", "");
+				Console.WriteLine(textResult);
+                return textResult;
+                // Dispatch some kind of event
+                //return textResult;
+            }
+
+            return null;
         }
     }
 
-    //public class PictureCallbackClass : Java.Lang.Object, IPictureCallback, IShutterCallback 
-    //{
-    //    Android.Hardware.Camera camera;
-    //    ITesseractApi tesseract;
-    //    bool _tesseractInitialised = false;
+    public static class AsyncHelper
+    {
+        private static readonly TaskFactory MyTaskFactory = new
+            TaskFactory(CancellationToken.None,
+                TaskCreationOptions.None,
+                TaskContinuationOptions.None,
+                TaskScheduler.Default);
 
+        public static TResult RunSync<TResult>(Func<Task<TResult>> func)
+        {
+            return MyTaskFactory
+                .StartNew(func)
+                .Unwrap()
+                .GetAwaiter()
+                .GetResult();
+        }
 
-    //    public PictureCallbackClass(Android.Hardware.Camera camera)
-    //    {
-    //        this.camera = camera;
-    //        tesseract = new TesseractApi(Application.Context, AssetsDeployment.OncePerVersion);
-    //    }
-
-    //    public void OnPictureTaken(byte[] data, Android.Hardware.Camera camera)
-    //    {
-    //        if(data != null) 
-    //        {
-    //            Thread t = new Thread(async () =>
-    //            {
-    //                // Take the photo
-    //                if(!_tesseractInitialised) {
-    //                    _tesseractInitialised = await tesseract.Init("eng");
-    //                }
-
-    //                bool success = await tesseract.SetImage(data);
-
-    //                if (success)
-    //                {
-    //                    string textResult = tesseract.Text;
-    //                    textResult.Trim();
-    //                    textResult.Replace(" ", "");
-
-    //                    // Dispatch some kind of event
-    //                    //return textResult;
-    //                }
-
-    //            });
-
-    //            t.IsBackground = true;
-    //            t.Start();
-
-    //            camera.StartPreview();   
-    //        }
-    //    }
-
-    //    public void OnShutter()
-    //    {
-    //    }
-    //}
+        public static void RunSync(Func<Task> func)
+        {
+            MyTaskFactory
+                .StartNew(func)
+                .Unwrap()
+                .GetAwaiter()
+                .GetResult();
+        }
+    }
 }

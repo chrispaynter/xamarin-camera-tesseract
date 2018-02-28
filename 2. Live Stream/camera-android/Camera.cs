@@ -27,7 +27,6 @@ namespace cameraandroid
         private CameraInfo mCameraInfo;
         bool _tesseractInitialised = false;
         ITesseractApi tesseract;
-        ImageView imageView;
 
         /// <summary>
         /// The frequency which a snapshot from the camera is taken and run through Tesseract OCR
@@ -46,10 +45,7 @@ namespace cameraandroid
 
             };
 
-            imageView = new ImageView(Application.Context);
-
             SetContentView (mTextureView);
-            this.AddContentView(imageView, new LinearLayout.LayoutParams(100, 100));
         }
 
         public CameraInfo GetCameraInfo()
@@ -216,10 +212,6 @@ namespace cameraandroid
                             Console.WriteLine("TBase64.EncodeToString(bytes, Base64.Default)ask is done");
                         //var base64 = Base64.EncodeToString(bytes, Base64Flags.Default);
                             //Console.WriteLine(base64);
-
-                        RunOnUiThread(() => {
-                            imageView.SetImageBitmap(bitmap);
-                        });
 
                             ocrRunning = false;
                         });

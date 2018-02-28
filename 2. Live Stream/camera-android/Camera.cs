@@ -78,9 +78,6 @@ namespace cameraandroid
             mCamera.SetDisplayOrientation (getCorrectCameraOrientation (mCameraInfo, mCamera));
 
             try {
-
-                cameraParams.SetPreviewSize();
-
                 mCamera.SetPreviewTexture (surface);
 				mCamera.SetPreviewCallback(this);
                 mCamera.StartPreview ();
